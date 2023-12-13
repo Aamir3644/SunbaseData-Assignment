@@ -1,0 +1,245 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Customer List</title>
+
+  <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+  <script src="https://cdn.jsdelivr.net/npm/axios/dist/axios.min.js"></script>
+</head>
+<body class="container mt-5">
+    <button type="button" class="btn btn-primary" onclick="goToSendCustomerDetails()">Add a Customer</button>
+  <h2 class="text-center">Customer List</h2>
+
+  <table id="customerTable" class="table table-striped">
+    <thead>
+      <tr>
+        <th>First Name</th>
+        <th>Last Name</th>
+        <th>Street</th>
+        <th>Address</th>
+        <th>City</th>
+        <th>State</th>
+        <th>Email</th>
+        <th>Phone</th>
+        <th>Action</th>
+      </tr>
+    </thead>
+    <tbody>
+      <!-- Customer list will be populated here dynamically By JS-->
+    </tbody>
+  </table>
+
+  <form id="updateCustomerForm" class="mt-3 border p-4">
+    <h3 class="mb-4">Update Customer</h3>
+
+    <div class="mb-3">
+      <label for="first_name" class="form-label">First Name:</label>
+      <input type="text" id="first_name" name="first_name" class="form-control" required>
+    </div>
+
+    <div class="mb-3">
+      <label for="last_name" class="form-label">Last Name:</label>
+      <input type="text" id="last_name" name="last_name" class="form-control" required>
+    </div>
+
+    <div class="mb-3">
+      <label for="street" class="form-label">Street:</label>
+      <input type="text" id="street" name="street" class="form-control">
+    </div>
+
+    <div class="mb-3">
+      <label for="address" class="form-label">Address:</label>
+      <input type="text" id="address" name="address" class="form-control">
+    </div>
+
+    <div class="mb-3">
+      <label for="city" class="form-label">City:</label>
+      <input type="text" id="city" name="city" class="form-control">
+    </div>
+
+    <div class="mb-3">
+      <label for="state" class="form-label">State:</label>
+      <input type="text" id="state" name="state" class="form-control">
+    </div>
+
+    <div class="mb-3">
+      <label for="email" class="form-label">Email:</label>
+      <input type="text" id="email" name="email" class="form-control">
+    </div>
+
+    <div class="mb-3">
+      <label for="phone" class="form-label">Phone:</label>
+      <input type="text" id="phone" name="phone" class="form-control">
+    </div>
+
+    <button type="button" id="submitUpdateButton" class="btn btn-primary">Submit Update</button>
+  </form>
+
+  <script>
+    window.onload = fetchCustomerList;
+
+    async function fetchCustomerList() {
+      const token = localStorage.getItem('bearerToken'); // Extracting token from Local Storage 
+
+      try {
+        // Because of the CORS error, i am using a proxy server to use it as a middleware
+        // The link below is of Proxy-server that will communicate with target server
+        const response = await fetch('http://localhost:3000/get_customer_list', {
+          method: 'GET',
+          headers: {
+            'Authorization': `Bearer ${token}`,
+          },
+        });
+
+        if (response.ok) {
+            // debugger;
+          const customerList = await response.json();
+          console.log(customerList);
+          displayCustomerList(customerList);
+        } else {
+          throw new Error('Failed to fetch customer list. Check your authorization.');
+        }
+      } catch (error) {
+        console.error(error);
+        alert('An error occurred while fetching the customer list.');
+      }
+    }
+
+    function displayCustomerList(customers) {
+  const tableBody = document.querySelector('#customerTable tbody');
+  // Clear existing rows
+  tableBody.innerHTML = '';
+
+  // Populating table with customer details
+  customers.forEach(customer => {
+    const row = tableBody.insertRow();
+    row.setAttribute('data-uuid', customer.uuid); // Seting data-uuid attributing for further use of updating
+
+    // Adjust these cells based on your actual customer data
+    const cells = [
+      'first_name', 'last_name', 'street', 'address', 'city', 'state', 'email', 'phone'
+    ].map(field => {
+      const cell = row.insertCell();
+      cell.textContent = customer[field];
+      return cell;
+    });
+
+    // Add buttons for delete and update actions
+    const deleteButton = document.createElement('button');
+    deleteButton.innerText = 'Delete';
+    deleteButton.classList.add('btn', 'btn-danger', 'me-2');
+    deleteButton.onclick = () => deleteCustomer(customer.uuid);
+
+    const updateButton = document.createElement('button');
+    updateButton.innerText = 'Update';
+    updateButton.classList.add('btn', 'btn-warning');
+    updateButton.onclick = () => updateCustomerForm(customer.uuid);
+
+    const actionCell = row.insertCell();
+    actionCell.appendChild(deleteButton);
+    actionCell.appendChild(updateButton);
+  });
+}
+
+    async function deleteCustomer(uuid) {
+        const token = localStorage.getItem('bearerToken');
+        console.log("uuid - ", uuid);
+
+        try {
+            const response = await fetch(`http://localhost:3000/delete_customer?cmd=delete&uuid=${uuid}`, {
+            method: 'POST',
+            headers: {
+                'Authorization': `Bearer ${token}`,
+                'Content-Type': 'application/json',
+            },
+            });
+
+            if (response.ok) {
+            alert('Customer deleted successfully.');
+            fetchCustomerList(); // Refreshing the customer list after deletion
+            } else {
+            throw new Error('Failed to delete customer. Check your authorization and UUID.');
+            }
+        } catch (error) {
+            console.error(error);
+            alert('An error occurred while deleting the customer.');
+        }
+        }
+
+        function goToSendCustomerDetails() {
+            window.location.href = 'AddCustomerDetails.html'; // Navigating to Customer List Page after successful Log in
+        }
+
+
+        function updateCustomerForm(uuid) {
+                
+                const form = document.getElementById('updateCustomerForm');
+
+                form.reset();
+
+                // Retrieving customer details from the table cells
+                const cells = document.querySelectorAll(`#customerTable tbody tr[data-uuid="${uuid}"] td`);
+                
+                // Populating form fields with the customer's current details
+                form.elements['first_name'].value = cells[0].textContent;
+                form.elements['last_name'].value = cells[1].textContent;
+                form.elements['street'].value = cells[2].textContent;
+                form.elements['address'].value = cells[3].textContent;
+                form.elements['city'].value = cells[4].textContent;
+                form.elements['state'].value = cells[5].textContent;
+                form.elements['email'].value = cells[6].textContent;
+                form.elements['phone'].value = cells[7].textContent;
+
+                // onClick Event Handler
+                const submitButton = document.getElementById('submitUpdateButton');
+                submitButton.onclick = () => submitUpdatedCustomer(uuid);
+        }
+
+
+        async function submitUpdatedCustomer(uuid) {
+            const token = localStorage.getItem('bearerToken'); 
+
+            const form = document.getElementById('updateCustomerForm');
+
+            const updatedCustomerData = {
+                cmd: 'update',
+                uuid: uuid,
+                first_name: form.elements['first_name'].value,
+                last_name: form.elements['last_name'].value,
+                street: form.elements['street'].value,
+                address: form.elements['address'].value,
+                city: form.elements['city'].value,
+                state: form.elements['state'].value,
+                email: form.elements['email'].value,
+                phone: form.elements['phone'].value
+            };
+
+            try {
+                const response = await axios.post('http://localhost:3000/update_customer', updatedCustomerData, {
+                headers: {
+                    'Authorization': `Bearer ${token}`,
+                    'Content-Type': 'application/json',
+                },
+                });
+
+                console.log(response); 
+
+                if (response.status === 200) {
+                alert('Customer updated successfully.');
+                fetchCustomerList(); // Refresh the customer list after updating
+                } else {
+                console.error(response.data); 
+                throw new Error('Failed to update customer. Check your authorization and data.');
+                }
+            } catch (error) {
+                console.error(error);
+                alert('An error occurred while updating the customer.');
+            }
+}
+
+  </script>
+
+</body>
+</html>
